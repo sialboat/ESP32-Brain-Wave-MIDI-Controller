@@ -1,21 +1,15 @@
 /*
-  Basic template for working with a stock MEAP board.
+ * SPDX-FileCopyrightText: 2019 Ha Thach (tinyusb.org)
+ *
+ * SPDX-License-Identifier: MIT
+ *
+ * SPDX-FileContributor: 2022-2023 Espressif Systems (Shanghai) CO LTD
+ *
+ * SPDX-FileContributor: 2023 esp32beans@gmail.com
  */
 
-#if ARDUINO_USB_MODE
-#warning this skeetch must be used when USB is in OTG mode
-void setup() {}
-void loop() {}
-#else
-#include "USB.h"
-
-// MindFlex Brain Sensor dependencies
-#include <SoftwareSerial.h> 
-#include "Brain.h"
-#define BRAIN_RX_PIN 7    // brain sensor pin
-
-brainWrapper brain(7);
-
+// This program is based on an ESP-IDF USB MIDI TinyUSB example with minimal
+// changes so it works on Arduino-esp32.
 
 #define CONTROL_RATE 128 // Hz, powers of 2 are most reliable
 #include <Meap.h>        // MEAP library, includes all dependent libraries, including all Mozzi modules
@@ -23,23 +17,94 @@ brainWrapper brain(7);
 Meap meap;                                           // creates MEAP object to handle inputs and other MEAP library functions
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI); // defines MIDI in/out ports
 
-// ---------- YOUR GLOBAL VARIABLES BELOW ----------
 
-void setup()
-{
-  Serial.begin(115200);                                                            // begins Serial communication with computer
-  meap.begin();                                                                    // sets up MEAP object
-  Serial1.begin(31250, SERIAL_8N1, meap.MEAP_MIDI_IN_PIN, meap.MEAP_MIDI_OUT_PIN); // sets up MIDI: baud rate, serial mode, rx pin, tx pin
-  startMozzi(CONTROL_RATE);                                                        // starts Mozzi engine with control rate defined above
+#if ARDUINO_USB_MODE
+#warning This sketch must be used when USB is in OTG mode
+void setup() {}
+void loop() {}
+#else
+#include "USB.h"
 
-  // ---------- YOUR SETUP CODE BELOW ----------
+// Setup a RotaryEncoder with 2 steps per latch for the 2 signal input pins:
+
+
+#include "esp32-hal-tinyusb.h"
+
+static const char *TAG = "usbdmidi";
+/** TinyUSB descriptors **/
+
+extern "C" uint16_t tusb_midi_load_descriptor(uint8_t *dst, uint8_t *itf) {
+  uint8_t str_index = tinyusb_add_string_descriptor("TinyUSB MIDI");
+  uint8_t ep_num = tinyusb_get_free_duplex_endpoint();
+  TU_VERIFY(ep_num != 0);
+  uint8_t descriptor[TUD_MIDI_DESC_LEN] = {
+    // Interface number, string index, EP Out & EP In address, EP size
+    TUD_MIDI_DESCRIPTOR(*itf, str_index, ep_num, (uint8_t)(0x80 | ep_num),
+                        64)
+  };
+  *itf += 1;
+  memcpy(dst, descriptor, TUD_MIDI_DESC_LEN);
+  return TUD_MIDI_DESC_LEN;
 }
 
-void loop()
-{
-  brain.update(); // handles brainWave number reading
+// From usb.org MIDI 1.0 specification. This 4 byte structure is the unit
+// of transfer for MIDI data over USB.
+typedef struct __attribute__((__packed__)) {
+  uint8_t code_index_number : 4;
+  uint8_t cable_number : 4;
+  uint8_t MIDI_0;
+  uint8_t MIDI_1;
+  uint8_t MIDI_2;
+} USB_MIDI_t;
+
+// Basic MIDI Messages
+// midi spec talks ab this
+#define NOTE_OFF 0x80
+#define NOTE_ON 0x90
+#define CONTROL_CHANGE 0xB0
+
+static void usbEventCallback(void *arg, esp_event_base_t event_base,
+                             int32_t event_id, void *event_data) {
+  if (event_base == ARDUINO_USB_EVENTS) {
+    arduino_usb_event_data_t *data = (arduino_usb_event_data_t *)event_data;
+    switch (event_id) {
+      case ARDUINO_USB_STARTED_EVENT:
+        Serial.println("USB PLUGGED");
+        break;
+      case ARDUINO_USB_STOPPED_EVENT:
+        Serial.println("USB UNPLUGGED");
+        break;
+      case ARDUINO_USB_SUSPEND_EVENT:
+        Serial.printf("USB SUSPENDED: remote_wakeup_en: %u\n",
+                      data->suspend.remote_wakeup_en);
+        break;
+      case ARDUINO_USB_RESUME_EVENT:
+        Serial.println("USB RESUMED");
+        break;
+
+      default:
+        break;
+    }
+  }
+}
+
+void setup() {
+  Serial.begin(115200);
+  meap.begin();
+  startMozzi(CONTROL_RATE);   
+
+  USB.onEvent(usbEventCallback);
+  tinyusb_enable_interface(USB_INTERFACE_MIDI, TUD_MIDI_DESC_LEN,
+                           tusb_midi_load_descriptor);
+  USB.begin();
+  while (!Serial && millis() < 5000)
+    delay(10);
+}
+
+void loop() {
   audioHook(); // handles Mozzi audio generation behind the scenes
 }
+
 
 /** Called automatically at rate specified by CONTROL_RATE macro, most of your code should live in here
  */
@@ -255,3 +320,5 @@ void updateDip(int number, bool up)
     break;
   }
 }
+
+#endif /* ARDUINO_USB_MODE */
