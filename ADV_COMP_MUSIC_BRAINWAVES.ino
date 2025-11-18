@@ -1,15 +1,12 @@
 /*
- * SPDX-FileCopyrightText: 2019 Ha Thach (tinyusb.org)
- *
- * SPDX-License-Identifier: MIT
- *
- * SPDX-FileContributor: 2022-2023 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-FileContributor: 2023 esp32beans@gmail.com
- */
+  BRAINWAVES SOUND CONTROLLER
+  
+  contains software used for the ESP32-based MEAP (Mason's ESP32 Audio Prototyping board) prototyping system developed by Mason Mann
+  for MPATE-GE 2047 Advanced Computer Music. This .ino file interfaces with a MindFlex EEG sensor with the Brain library from Frontiernerds
+  and uses tinyUSB for USB Serial and MIDI communication.
 
-// This program is based on an ESP-IDF USB MIDI TinyUSB example with minimal
-// changes so it works on Arduino-esp32.
+  Brain Library: https://github.com/kitschpatrol/Arduino-Brain-Library
+*/
 
 #include "brainWrapper.h"
 #include <SoftwareSerial.h>
@@ -32,9 +29,6 @@ Brain brain(brainSerial);
 void setup() {}
 void loop() {}
 #else
-
-// Setup a RotaryEncoder with 2 steps per latch for the 2 signal input pins:
-
 
 #include "esp32-hal-tinyusb.h"
 

@@ -1,0 +1,9 @@
+All code (test .ino projects and the .ino project) has been archived at the 
+GitHub repository listed below. We were able to successfully get MIDI out of
+tinyUSB and the hardware to communicate with the MEAP.
+
+Next steps involve implementing random processes and interpolation infrastructure,
+creating a sound texture generator, and to add Serial communication via CDC in
+tinyUSB.
+
+The Github Repository can be found [here](https://github.com/sialboat/ESP32-Brain-Wave-MIDI-Controller-MPATE-GE-2047-)

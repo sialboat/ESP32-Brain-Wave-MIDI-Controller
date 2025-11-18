@@ -12,36 +12,42 @@
   Assumes the Brain object has already been connected via a Hardware Serial or a Software Serial
 */
 
-typedef struct BRAIN_WAVE
+namespace BRAIN_WAVE
 {
-  static const int DELTA = 0;
-  static const int THETA = 1;
-  static const int LOW_ALPHA = 2;
-  static const int HIGH_ALPHA = 3;
-  static const int LOW_BETA = 4;
-  static const int HIGH_BETA = 5;
-  static const int LOW_GAMMA = 6;
-  static const int HIGH_GAMMA = 7;
-}BRAIN_WAVE;
+  enum class FFT_Band {
+    DELTA = 0,
+    THETA = 1,
+    LOW_ALPHA = 2,
+    HIGH_ALPHA = 3,
+    LOW_BETA = 4,
+    HIGH_BETA = 5,
+    LOW_GAMMA = 6,
+    HIGH_GAMMA = 7;
+  };
+}
+// typedef struct BRAIN_WAVE
+// {
+//   static const int DELTA = 0;
+//   static const int THETA = 1;
+//   static const int LOW_ALPHA = 2;
+//   static const int HIGH_ALPHA = 3;
+//   static const int LOW_BETA = 4;
+//   static const int HIGH_BETA = 5;
+//   static const int LOW_GAMMA = 6;
+//   static const int HIGH_GAMMA = 7;
+// }BRAIN_WAVE;
 
 class brainWrapper
 {
   public:
   brainWrapper(Brain* b) : brain(b) {
     for(int i = 0; i < 8; i++) {
-      brain_waves.push_back(0);
+      brainWave wave();
+      brain_waves.push_back(wave);
     }
     // brainSerial.begin(baud, SERIAL_8N1, pin, 42);
     // Serial.println("foo)");
   }
-  // brainWrapper(HardwareSerial* h, int RX) : brainSerial(h), brain(b), pin(RX), brain(brainSerial) {
-  //   // softSerial.begin(115200);
-  //   // softSerial(RX, 11);
-    // brainSerial = HardwareSerial(2);
-    // brain = Brain(brainSerial);
-  //   brain_waves(8, 0);
-  //   Serial.println("buh");
-  // }
 
   bool setDebug(bool val) {
     debug = val;
@@ -50,19 +56,26 @@ class brainWrapper
 
   void update()
   {
-    Serial.println(brain->readCSV());
     if(brain->update()) {
       unsigned long* waves = brain->readPowerArray();
       attention = brain->readAttention();
       meditation = brain->readMeditation();
-      brain_waves.at(BRAIN_WAVE::DELTA) = waves[BRAIN_WAVE::DELTA];
-      brain_waves.at(BRAIN_WAVE::THETA) = waves[BRAIN_WAVE::THETA];
-      brain_waves.at(BRAIN_WAVE::LOW_ALPHA) = waves[BRAIN_WAVE::LOW_ALPHA];
-      brain_waves.at(BRAIN_WAVE::HIGH_ALPHA) = waves[BRAIN_WAVE::HIGH_ALPHA];
-      brain_waves.at(BRAIN_WAVE::LOW_BETA) = waves[BRAIN_WAVE::LOW_BETA];
-      brain_waves.at(BRAIN_WAVE::HIGH_BETA) = waves[BRAIN_WAVE::HIGH_BETA];
-      brain_waves.at(BRAIN_WAVE::LOW_GAMMA) = waves[BRAIN_WAVE::LOW_GAMMA];
-      brain_waves.at(BRAIN_WAVE::HIGH_GAMMA) = waves[BRAIN_WAVE::HIGH_GAMMA];
+      // brain_waves.at(BRAIN_WAVE::DELTA) = waves[BRAIN_WAVE::DELTA];
+      // brain_waves.at(BRAIN_WAVE::THETA) = waves[BRAIN_WAVE::THETA];
+      // brain_waves.at(BRAIN_WAVE::LOW_ALPHA) = waves[BRAIN_WAVE::LOW_ALPHA];
+      // brain_waves.at(BRAIN_WAVE::HIGH_ALPHA) = waves[BRAIN_WAVE::HIGH_ALPHA];
+      // brain_waves.at(BRAIN_WAVE::LOW_BETA) = waves[BRAIN_WAVE::LOW_BETA];
+      // brain_waves.at(BRAIN_WAVE::HIGH_BETA) = waves[BRAIN_WAVE::HIGH_BETA];
+      // brain_waves.at(BRAIN_WAVE::LOW_GAMMA) = waves[BRAIN_WAVE::LOW_GAMMA];
+      // brain_waves.at(BRAIN_WAVE::HIGH_GAMMA) = waves[BRAIN_WAVE::HIGH_GAMMA];
+      // brain_waves.at(BRAIN_WAVE::DELTA).update(waves[BRAIN_WAVE::DELTA]);
+      // brain_waves.at(BRAIN_WAVE::THETA).update(waves[BRAIN_WAVE::THETA]);
+      // brain_waves.at(BRAIN_WAVE::LOW_ALPHA).update(waves[BRAIN_WAVE::LOW_ALPHA]);
+      // brain_waves.at(BRAIN_WAVE::HIGH_ALPHA).update(waves[BRAIN_WAVE::HIGH_ALPHA]);
+      // brain_waves.at(BRAIN_WAVE::LOW_BETA).update(waves[BRAIN_WAVE::LOW_BETA]);
+      // brain_waves.at(BRAIN_WAVE::HIGH_BETA).update(waves[BRAIN_WAVE::HIGH_BETA]);
+      // brain_waves.at(BRAIN_WAVE::LOW_GAMMA).update(waves[BRAIN_WAVE::LOW_GAMMA]);
+      // brain_waves.at(BRAIN_WAVE::HIGH_GAMMA).update(waves[BRAIN_WAVE::HIGH_GAMMA]);
       // brain_waves.at(DELTA) = brain.readDelta();
       // brain_waves.at(THETA) = brain.readTheta();
       // brain_waves.at(LOW_ALPHA) = brain.readLowAlpha();
@@ -71,12 +84,22 @@ class brainWrapper
       // brain_waves.at(HIGH_BETA) = brain.readHighBeta();
       // brain_waves.at(LOW_GAMMA) = brain.readLowGamma();
       // brain_waves.at(HIGH_GAMMA) = brain.readHighGamma();
-    }
-    if(debug) {
-      Serial.println(brain->readErrors());
-      Serial.println(brain->readCSV());
+      if(debug) {
+        Serial.println(brain->readErrors());
+        Serial.println(brain->readCSV());
+      }
     }
   }
+
+  void interp()
+  {
+    // hermite(BRAIN_WAVE::FFT_Band::DELTA);
+    for(brainWave i : brain_waves)
+    {
+      // i.hermite(waves[i]);
+    }
+  }
+  
 
   uint8_t getMeditation() {return meditation;}
   uint8_t getAttention() {return attention;}
@@ -92,11 +115,10 @@ class brainWrapper
 
   private:
   bool debug = false;
-  // HardwareSerial brainSerial;
-  // SoftwareSerial* brainSerial;
   Brain* brain;
   int pin;
-  std::vector<unsigned long> brain_waves;
+  // std::vector<unsigned long> brain_waves;
+  std::vector<brainWave> brain_waves;
   uint8_t attention;
   uint8_t meditation;
 };
