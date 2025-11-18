@@ -1,0 +1,105 @@
+{
+	"nodes":[
+		{"id":"d0f8e70bc1b13742","type":"group","x":-970,"y":140,"width":1420,"height":600,"color":"#306273","label":"Software side"},
+		{"id":"817f9dbd88374be2","type":"group","x":-1020,"y":-120,"width":1520,"height":100,"color":"3","label":"Hardware flowchart"},
+		{
+			"id":"5fcd481163f022e8",
+			"type":"text",
+			"text":"Mindflex Sensor",
+			"styleAttributes":{},
+			"x":-1000,
+			"y":-100,
+			"width":260,
+			"height":60,
+			"color":"5"
+		},
+		{
+			"id":"bc3f1bbf128656bd",
+			"type":"text",
+			"text":"MEAP GPIO & GND Pin\n",
+			"styleAttributes":{},
+			"x":-600,
+			"y":-100,
+			"width":260,
+			"height":60,
+			"color":"4"
+		},
+		{
+			"id":"a9be40698407a16d",
+			"type":"text",
+			"text":"Arduino IDE (for *modular* data processing)",
+			"styleAttributes":{},
+			"x":-180,
+			"y":-100,
+			"width":260,
+			"height":60,
+			"color":"#04716a"
+		},
+		{
+			"id":"f7c11c504be2cb6c",
+			"type":"text",
+			"text":"MIDI CC / Audio",
+			"styleAttributes":{},
+			"x":220,
+			"y":-100,
+			"width":260,
+			"height":60,
+			"color":"2"
+		},
+		{
+			"id":"cd4a1d6deba4922b",
+			"type":"text",
+			"text":"### Ideas for Data Processing\n- `BIAS` - offsets the output value by a given amount\n- `SCALE` - offsets the output value by a linear function\n- `WARP` - offsets the output value by a mathematical function\n- `INVERT` - inverts the output\n- `SLEW` - data is smoothed\n- `LOGIC` - Attach a second parameter and outputs based on the conditionals\n- `X_OP_Y` - displays as X <\\basic math operation> Y\n- `X_OR_Y` - sent in two separate channels, one for X, one for Y.\n- `CATXY` - interleaves X and Y information into one stream of data\n\t- `AND` - data is sent only when X and Y both change. X and then Y will be sent (unless toggled)\n\t- `OR` - data is sent when X or Y change (whichever change there is will be sent)\n\t- `XOR` - data is sent when only X or only Y change (not both X or Y). \n- `POLAR` - data is sent as Radians / as a Polar Coordinate\n- `LISS` - data control a chaos generator\n- `PHYS` - data controls physics simulation",
+			"styleAttributes":{},
+			"x":-190,
+			"y":160,
+			"width":620,
+			"height":560,
+			"color":"2"
+		},
+		{
+			"id":"8e5b119493ed963a",
+			"type":"text",
+			"text":"### Ideas for Sound Processing\n- Resonator Bank $-->$ Granularizer (done on MEAP) for a bank of small samples\n- Really bad clone of the AudioThing BOO6A\n- VCV Rack / Bitwig Studio via MIDI-CC\n\t- Spectral / FFT-based plugin processing\n- Drone / Weird sound generator\n- MIDI is sent via USB ideally, audio is sent via 3.5mm",
+			"styleAttributes":{},
+			"x":-940,
+			"y":290,
+			"width":620,
+			"height":300,
+			"color":"2"
+		}
+	],
+	"edges":[
+		{
+			"id":"8cd599811540d772",
+			"styleAttributes":{},
+			"toFloating":false,
+			"fromNode":"5fcd481163f022e8",
+			"fromSide":"right",
+			"toNode":"bc3f1bbf128656bd",
+			"toSide":"left"
+		},
+		{
+			"id":"e5df2ab51ef655f1",
+			"styleAttributes":{},
+			"toFloating":false,
+			"fromNode":"bc3f1bbf128656bd",
+			"fromSide":"right",
+			"toNode":"a9be40698407a16d",
+			"toSide":"left"
+		},
+		{
+			"id":"48941f33a31890a5",
+			"styleAttributes":{},
+			"toFloating":false,
+			"fromNode":"a9be40698407a16d",
+			"fromSide":"right",
+			"toNode":"f7c11c504be2cb6c",
+			"toSide":"left"
+		}
+	],
+	"metadata":{
+		"version":"1.0-1.0",
+		"frontmatter":{}
+	}
+}
