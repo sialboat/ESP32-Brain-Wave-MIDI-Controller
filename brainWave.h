@@ -9,7 +9,7 @@ namespace INTERP
 {
   enum class INTERPOLATION
   {
-    LINEAR = 1, LAGRANGE = 2, HERMITE = 3;
+    LINEAR = 1, LAGRANGE = 2, HERMITE = 3,
   };
 }
 
@@ -29,8 +29,9 @@ class brainWave
 
   void set_fft_index(size_t val) {fft_index = val;}
   size_t get_fft_index() {return fft_index;}
-  void set_val(unsigned long new_val) {p1 = new_val;}
-  unsigned long get_val() {return val;}
+  void set_out_val(unsigned long new_val) {out_val = new_val;}
+  void set_p0(unsigned long new_val) {p0 = new_val;}
+  unsigned long get_val() {return out_val;}
   void set_alpha(float new_alpha) {alpha = new_alpha;}
   float get_alpha() {return alpha;}
 
@@ -65,9 +66,11 @@ class brainWave
     // approximate tangent
     m0 = (p1 - p0) / 2;     // approximate tangent of p0
     m1 = (p2 - p0) / 2;     // approximate tangent of p1
+
+    interp();
   }
 
-  unsinged long interp()
+  void interp()
   {
     switch(interpolation_mode)
     {
@@ -84,8 +87,7 @@ class brainWave
         out_val = hermite();
         break;
     }
-
-    return out_val;
+    // return out_val;  
   }
 
   // simple low computation moving average filter / linear interpolation algorithm
@@ -145,9 +147,9 @@ class brainWave
     w2 = 0.5f;
 
     // compute c1 & c2
-    c0 = a0 / (x - x0);
-    c1 = a1 / (x - x1);
-    c2 = a2 / (x - x2);
+    c0 = w0 / (x - x0);
+    c1 = w1 / (x - x1);
+    c2 = w2 / (x - x2);
 
     // compute the numerator and denominator
     num = (c0 * p0) + (c1 * p1) + (c2 * p2);
@@ -176,7 +178,7 @@ class brainWave
 
     //calculate each subcomponent
     unsigned long c1 = ((2 * a3) - (3 * a2) + 1) * p0;
-    unsigned long c2 = (a3 - (2 * a2) + a) * m0;
+    unsigned long c2 = (a3 - (2 * a2) + alpha) * m0;
     unsigned long c3 = ((-2 * a3) + (3 * a2)) * p1;
     unsigned long c4 = (a3 + a2) * m1;
     return c1 + c2 + c3 + c4;

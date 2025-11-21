@@ -14,7 +14,7 @@
 
 namespace BRAIN_WAVE
 {
-  enum class FFT_Band {
+  enum class FFT_BAND {
     DELTA = 0,
     THETA = 1,
     LOW_ALPHA = 2,
@@ -22,7 +22,7 @@ namespace BRAIN_WAVE
     LOW_BETA = 4,
     HIGH_BETA = 5,
     LOW_GAMMA = 6,
-    HIGH_GAMMA = 7;
+    HIGH_GAMMA = 7,
   };
 }
 // typedef struct BRAIN_WAVE
@@ -57,7 +57,7 @@ class brainWrapper
   void update()
   {
     if(brain->update()) {
-      unsigned long* waves = brain->readPowerArray();
+      waves = brain->readPowerArray();
       attention = brain->readAttention();
       meditation = brain->readMeditation();
       // brain_waves.at(BRAIN_WAVE::DELTA) = waves[BRAIN_WAVE::DELTA];
@@ -92,28 +92,35 @@ class brainWrapper
     }
   }
 
+  // update brain wave stuff
   void interp()
   {
-    for(brainWave& i : brain_waves)
-    {
-      i = i.interp();
+    for(size_t i = 0; i < brain_waves.size(); i++) {
+      unsigned long new_value = waves[i];
+      brain_waves.at(i).update(new_value);
+      // brain_waves.at(i). = brain_waves.at(i).interp();
     }
+    // for(brainWave& i : brain_waves)
+    // {
+    //   i = i.interp();
+    // }
   }
-  
 
+  
   uint8_t getMeditation() {return meditation;}
   uint8_t getAttention() {return attention;}
-  unsigned long getDelta() {return brain_waves.at(BRAIN_WAVE::DELTA);}
-  unsigned long getTheta() {return brain_waves.at(BRAIN_WAVE::THETA);}
-  unsigned long getLowAlpha() {return brain_waves.at(BRAIN_WAVE::LOW_ALPHA);}
-  unsigned long getHighAlpha() {return brain_waves.at(BRAIN_WAVE::HIGH_ALPHA);}
-  unsigned long getLowBeta() {return brain_waves.at(BRAIN_WAVE::LOW_BETA);}
-  unsigned long getHighBeta() {return brain_waves.at(BRAIN_WAVE::HIGH_BETA);}
-  unsigned long getLowGamma() {return brain_waves.at(BRAIN_WAVE::LOW_GAMMA);}
-  unsigned long getHighGamma() {return brain_waves.at(BRAIN_WAVE::HIGH_GAMMA);}  
-  std::vector<unsigned long> getBrainWaves() {return brain_waves;}
+  unsigned long getDelta() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::DELTA)).get_val();}
+  unsigned long getTheta() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::THETA)).get_val();}
+  unsigned long getLowAlpha() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::LOW_ALPHA)).get_val();}
+  unsigned long getHighAlpha() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_ALPHA)).get_val();}
+  unsigned long getLowBeta() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::LOW_BETA)).get_val();}
+  unsigned long getHighBeta() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_BETA)).get_val();}
+  unsigned long getLowGamma() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::LOW_GAMMA)).get_val();}
+  unsigned long getHighGamma() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_GAMMA)).get_val();}  
+  std::vector<brainWave>* getBrainWaves() {return &brain_waves;}
 
   private:
+  unsigned long* waves;
   bool debug = false;
   Brain* brain;
   int pin;
