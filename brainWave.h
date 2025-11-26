@@ -5,6 +5,7 @@
   the interpolation algorithms
 */
 
+
 namespace INTERP
 {
   enum class INTERPOLATION
@@ -15,9 +16,9 @@ namespace INTERP
 
 class brainWave
 {
-  public:
+public:
   brainWave(size_t i) : fft_index(i) {
-    alpha = 0.2f;
+    alpha = 0.5f;
     interpolation_mode = INTERP::INTERPOLATION::HERMITE;
     p0 = 0;
     p1 = 0;
@@ -26,14 +27,6 @@ class brainWave
     m1 = 0;
     out_val = 0;
   }
-
-  void set_fft_index(size_t val) {fft_index = val;}
-  size_t get_fft_index() {return fft_index;}
-  void set_out_val(unsigned long new_val) {out_val = new_val;}
-  void set_p0(unsigned long new_val) {p0 = new_val;}
-  unsigned long get_val() {return out_val;}
-  void set_alpha(float new_alpha) {alpha = new_alpha;}
-  float get_alpha() {return alpha;}
 
   void set_interp(int type)
   {
@@ -93,7 +86,7 @@ class brainWave
   // simple low computation moving average filter / linear interpolation algorithm
   unsigned long lerp()
   {
-    return (long)(alpha * p0) + ((1 - alpha) * p1);
+    return (unsigned long)(alpha * p0) + ((1 - alpha) * p1);
   }
 
   /*
@@ -184,10 +177,21 @@ class brainWave
     return c1 + c2 + c3 + c4;
   }
 
+  // fuckshit getters and setters
+public:
+  void set_fft_index(size_t val) {fft_index = val;}
+  size_t get_fft_index() {return fft_index;}
+  void set_out_val(unsigned long new_val) {out_val = new_val;}
+  void set_p0(unsigned long new_val) {p0 = new_val;}
+  unsigned long get_val() {return out_val;}
+  void set_alpha(float new_alpha = default_alpha) {alpha = new_alpha;}
+  float get_alpha() {return alpha;}
+
   private:
   size_t fft_index;   // index of the FFT array upon calling "brain->readPowerArray()"
   INTERP::INTERPOLATION interpolation_mode;
-  float alpha;
+  float alpha;		// akin to weight value
+  static constexpr float default_alpha = 0.5f;
   unsigned long out_val;
   unsigned long p0;   // current sample
   unsigned long p1;   // previous sample

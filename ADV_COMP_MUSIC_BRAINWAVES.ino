@@ -3,128 +3,122 @@
   
   contains software used for the ESP32-based MEAP (Mason's ESP32 Audio Prototyping board) prototyping system developed by Mason Mann
   for MPATE-GE 2047 Advanced Computer Music. This .ino file interfaces with a MindFlex EEG sensor with the Brain library from Frontiernerds
-  and uses tinyUSB for USB Serial and MIDI communication.
+  and uses tinyUSB for USB usbc_serial and MIDI communication.
 
   Brain Library: https://github.com/kitschpatrol/Arduino-Brain-Library
 */
 
+#include <Arduino.h>
 #include "brainWrapper.h"
-#include <SoftwareSerial.h>
+#include <Adafruit_TinyUSB.h>
+#include <MIDI.h>
 #include <Brain.h>
-#include "USB.h"
+#include <Adafruit_NeoPixel.h>
 
+// add a neopixel for visual feedback / indicator of other changes that will happen.
+// Consult ~/Documents/Arduino/neopixel_demo/neopixel_demo.ino for what to do.
+#define NEOPIXEL_PIN 999 // SILAS PLEASE CHANGE THIS LATER THANKS
+#define BUILTIN_LED 42
+#define BRAIN_PIN 7
+
+// MEAP STUFF
 #define CONTROL_RATE 128 // Hz, powers of 2 are most reliable
 #include <Meap.h>        // MEAP library, includes all dependent libraries, including all Mozzi modules
 
-// Meap meap;                                           // creates MEAP object to handle inputs and other MEAP library functions
-// MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI); // defines MIDI in/out ports
+// usbc_serial
+Adafruit_USBD_CDC usbc_serial;
+Adafruit_USBD_MIDI usb_midi;
+
+// MIDI_CREATE_INSTANCE(Hardwareusbc_serial, Serial1, MIDI); // defines MIDI in/out ports
+MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, MIDI); // defines MIDI in/out ports
+Meap meap;                                                 // creates MEAP object to handle inputs and other MEAP library functions
 
 HardwareSerial brainSerial(2);
-// SoftwareSerial brainSerial(7, 42);
+// SoftwareSerial brainSerial(BRAIN_PIN, BUILTIN_LED);
 Brain brain(brainSerial);
-brainWrapper bryan(&brain);
+brainWrapper bryan(&brain, &usbc_serial, &usb_midi);
 
-#if ARDUINO_USB_MODE
-#warning This sketch must be used when USB is in OTG mode
-void setup() {}
-void loop() {}
-#else
+Adafruit_NeoPixel neopixel = Adafruit_NeoPixel(4, NEOPIXEL_PIN, NEO_RGB);
 
-#include "esp32-hal-tinyusb.h"
-
-static const char *TAG = "usbdmidi";
-/** TinyUSB descriptors **/
-
-extern "C" uint16_t tusb_midi_load_descriptor(uint8_t *dst, uint8_t *itf) {
-  uint8_t str_index = tinyusb_add_string_descriptor("TinyUSB MIDI");
-  uint8_t ep_num = tinyusb_get_free_duplex_endpoint();
-  TU_VERIFY(ep_num != 0);
-  uint8_t descriptor[TUD_MIDI_DESC_LEN] = {
-    // Interface number, string index, EP Out & EP In address, EP size
-    TUD_MIDI_DESCRIPTOR(*itf, str_index, ep_num, (uint8_t)(0x80 | ep_num),
-                        64)
-  };
-  *itf += 1;
-  memcpy(dst, descriptor, TUD_MIDI_DESC_LEN);
-  return TUD_MIDI_DESC_LEN;
-}
-
-// From usb.org MIDI 1.0 specification. This 4 byte structure is the unit
-// of transfer for MIDI data over USB.
-typedef struct __attribute__((__packed__)) {
-  uint8_t code_index_number : 4;
-  uint8_t cable_number : 4;
-  uint8_t MIDI_0;
-  uint8_t MIDI_1;
-  uint8_t MIDI_2;
-} USB_MIDI_t;
-
-// Basic MIDI Messages
-// midi spec talks ab this
-#define NOTE_OFF 0x80
-#define NOTE_ON 0x90
-#define CONTROL_CHANGE 0xB0
-
-static void usbEventCallback(void *arg, esp_event_base_t event_base,
-                             int32_t event_id, void *event_data) {
-  if (event_base == ARDUINO_USB_EVENTS) {
-    arduino_usb_event_data_t *data = (arduino_usb_event_data_t *)event_data;
-    switch (event_id) {
-      case ARDUINO_USB_STARTED_EVENT:
-        Serial.println("USB PLUGGED");
-        break;
-      case ARDUINO_USB_STOPPED_EVENT:
-        Serial.println("USB UNPLUGGED");
-        break;
-      case ARDUINO_USB_SUSPEND_EVENT:
-        Serial.printf("USB SUSPENDED: remote_wakeup_en: %u\n",
-                      data->suspend.remote_wakeup_en);
-        break;
-      case ARDUINO_USB_RESUME_EVENT:
-        Serial.println("USB RESUMED");
-        break;
-
-      default:
-        break;
-    }
-  }
-}
+// #if ARDUINO_USB_MODE
+// #warning This sketch must be used when USB is in OTG mode
+// void setup() {}
+// void loop() {}
+// #else
 
 void setup() {
-  // Serial.begin(9600);
-  // brainSerial.begin(9600);
-  brainSerial.begin(9600, SERIAL_8N1, 7, 42);
-  Serial.begin(115200);
+  if(!TinyUSBDevice.isInitialized()) {
+    TinyUSBDevice.begin(0);
+  }
+  usbc_serial.begin(115200);
+  usb_midi.setStringDescriptor("TinyUSB MIDI");
+  brainSerial.begin(9600, SERIAL_8N1, BRAIN_PIN, BUILTIN_LED);
+  // softSerial.begin();
+  // initialize MIDI, listen to all MIDI Channels.
+  // This will also call usb_midi's begin()
+  MIDI.begin(MIDI_CHANNEL_OMNI);
+
+  // failsafe-if already enumerated, additional class driver begin() for stuff like
+  // msc, hid, midi won't kick in until re-enumeration.
+  if(TinyUSBDevice.mounted()) {
+    TinyUSBDevice.detach();
+    delay(10);
+    TinyUSBDevice.attach();
+  }
+
+  // Attach MIDI Functions
+  MIDI.setHandleNoteOn(handleNoteOn);
+  MIDI.setHandleNoteOff(handleNoteOff);
+  MIDI.setHandleControlChange(handleControlChange);
+  // MIDI.setProgramChange(handleProgramChange);
+
+//  MIDI.setHandleControlChange(handleControlChange);
+//  MIDI.setHandlePitchBend(handlePitchBend);
+//  MIDI.setHandleProgramChange(handleProgramChange);
+//  MIDI.set whatever the fuck else I decide to do
+
+  //  consult MIDI.h (~/Documents/Arduino/libraries/MIDI_Library/src/MIDI.h and
+  //  ~/Documents/Arduino/libraries/MIDI_Library/src/MIDI.cpp
+
   meap.begin();
   startMozzi(CONTROL_RATE);   
   bryan.setDebug(true);
-  USB.onEvent(usbEventCallback);
-  tinyusb_enable_interface(USB_INTERFACE_MIDI, TUD_MIDI_DESC_LEN,
-                           tusb_midi_load_descriptor);
-  USB.begin();
-  while (!Serial && millis() < 5000) {
-    Serial.println("foo");
-    delay(10);
-  }
+  // USB.onEvent(usbEventCallback);
+  // tinyusb_enable_interface(USB_INTERFACE_MIDI, TUD_MIDI_DESC_LEN,
+  //                         tusb_midi_load_descriptor);
+  // USB.begin();
+  while(!TinyUSBDevice.mounted()) delay(10);
+  usbc_serial.println("morning!");
 }
 
 void loop() {
-  // Serial.println("a");
-  Serial.println(brain.readErrors());
-  Serial.println(brain.readCSV());
+  // usbc_serial.println("a");
+  #ifdef TINYUSB_NEED_POLLING_TASK
+  // Manual call tud_task since it isn't called by Core's background
+    TinyUSBDevice.task();
+  #endif
+
+  // shit the bed; failsafe.
+  if(!TinyUSBDevice.mounted()) {
+    return;
+  }
+  MIDI.sendNoteOn(48, 127, 1);
+  MIDI.sendNoteOff(48, 127, 1);
+  // delay(100);
+  MIDI.read();
   bryan.update();
   audioHook(); // handles Mozzi audio generation behind the scenes
 }
 
 
 /** Called automatically at rate specified by CONTROL_RATE macro, most of your code should live in here
-//  */
+*/
 void updateControl()
 {
   meap.readInputs();
   // bryan.update();
-  // Serial.println(brain.readErrors());
-  // Serial.println(brain.readCSV());
+  // usbc_serial.println(brain.readErrors());
+  // usbc_serial.println(brain.readCSV());
   // ---------- YOUR updateControl CODE BELOW ----------
 }
 
@@ -156,81 +150,81 @@ void updateTouch(int number, bool pressed)
   case 0:
     if (pressed)
     { // Pad 0 pressed
-      Serial.println("t0 pressed ");
+      usbc_serial.println("t0 pressed ");
     }
     else
     { // Pad 0 released
-      Serial.println("t0 released");
+      usbc_serial.println("t0 released");
     }
     break;
   case 1:
     if (pressed)
     { // Pad 1 pressed
-      Serial.println("t1 pressed");
+      usbc_serial.println("t1 pressed");
     }
     else
     { // Pad 1 released
-      Serial.println("t1 released");
+      usbc_serial.println("t1 released");
     }
     break;
   case 2:
     if (pressed)
     { // Pad 2 pressed
-      Serial.println("t2 pressed");
+      usbc_serial.println("t2 pressed");
     }
     else
     { // Pad 2 released
-      Serial.println("t2 released");
+      usbc_serial.println("t2 released");
     }
     break;
   case 3:
     if (pressed)
     { // Pad 3 pressed
-      Serial.println("t3 pressed");
+      usbc_serial.println("t3 pressed");
     }
     else
     { // Pad 3 released
-      Serial.println("t3 released");
+      usbc_serial.println("t3 released");
     }
     break;
   case 4:
     if (pressed)
     { // Pad 4 pressed
-      Serial.println("t4 pressed");
+      usbc_serial.println("t4 pressed");
     }
     else
     { // Pad 4 released
-      Serial.println("t4 released");
+      usbc_serial.println("t4 released");
     }
     break;
   case 5:
     if (pressed)
     { // Pad 5 pressed
-      Serial.println("t5 pressed");
+      usbc_serial.println("t5 pressed");
     }
     else
     { // Pad 5 released
-      Serial.println("t5 released");
+      usbc_serial.println("t5 released");
     }
     break;
   case 6:
     if (pressed)
     { // Pad 6 pressed
-      Serial.println("t6 pressed");
+      usbc_serial.println("t6 pressed");
     }
     else
     { // Pad 6 released
-      Serial.println("t6 released");
+      usbc_serial.println("t6 released");
     }
     break;
   case 7:
     if (pressed)
     { // Pad 7 pressed
-      Serial.println("t7 pressed");
+      usbc_serial.println("t7 pressed");
     }
     else
     { // Pad 7 released
-      Serial.println("t7 released");
+      usbc_serial.println("t7 released");
     }
     break;
   }
@@ -255,84 +249,119 @@ void updateDip(int number, bool up)
   case 0:
     if (up)
     { // DIP 0 up
-      Serial.println("d0 up");
+      usbc_serial.println("d0 up");
     }
     else
     { // DIP 0 down
-      Serial.println("d0 down");
+      usbc_serial.println("d0 down");
     }
     break;
   case 1:
     if (up)
     { // DIP 1 up
-      Serial.println("d1 up");
+      usbc_serial.println("d1 up");
     }
     else
     { // DIP 1 down
-      Serial.println("d1 down");
+      usbc_serial.println("d1 down");
     }
     break;
   case 2:
     if (up)
     { // DIP 2 up
-      Serial.println("d2 up");
+      usbc_serial.println("d2 up");
     }
     else
     { // DIP 2 down
-      Serial.println("d2 down");
+      usbc_serial.println("d2 down");
     }
     break;
   case 3:
     if (up)
     { // DIP 3 up
-      Serial.println("d3 up");
+      usbc_serial.println("d3 up");
     }
     else
     { // DIP 3 down
-      Serial.println("d3 down");
+      usbc_serial.println("d3 down");
     }
     break;
   case 4:
     if (up)
     { // DIP 4 up
-      Serial.println("d4 up");
+      usbc_serial.println("d4 up");
     }
     else
     { // DIP 4 down
-      Serial.println("d4 down");
+      usbc_serial.println("d4 down");
     }
     break;
   case 5:
     if (up)
     { // DIP 5 up
-      Serial.println("d5 up");
+      usbc_serial.println("d5 up");
     }
     else
     { // DIP 5 down
-      Serial.println("d5 down");
+      usbc_serial.println("d5 down");
     }
     break;
   case 6:
     if (up)
     { // DIP 6 up
-      Serial.println("d6 up");
+      usbc_serial.println("d6 up");
     }
     else
     { // DIP 6 down
-      Serial.println("d6 down");
+      usbc_serial.println("d6 down");
     }
     break;
   case 7:
     if (up)
     { // DIP 7 up
-      Serial.println("d7 up");
+      usbc_serial.println("d7 up");
     }
     else
     { // DIP 7 down
-      Serial.println("d7 down");
+      usbc_serial.println("d7 down");
     }
     break;
   }
 }
 
-#endif /* ARDUINO_USB_MODE */
+void handleNoteOn(uint8_t channel, uint8_t pitch, uint8_t velocity) {
+  // do something here
+  usbc_serial.print("note on @");
+  usbc_serial.print(channel);
+  usbc_serial.print(", ");
+  usbc_serial.print(pitch);
+  usbc_serial.print(", ");
+  usbc_serial.print(velocity);
+  usbc_serial.print(" (chan / pitch / velocity)\n");
+}
+void handleNoteOff(uint8_t channel, uint8_t pitch, uint8_t velocity) {
+  // do something here
+  usbc_serial.print("note off @");
+  usbc_serial.print(channel);
+  usbc_serial.print(", ");
+  usbc_serial.print(pitch);
+  usbc_serial.print(", ");
+  usbc_serial.print(velocity);
+  usbc_serial.print(" (chan / pitch / velocity)\n");
+
+}
+void handleControlChange(uint8_t channel, uint8_t value, uint8_t cc_num) {
+  // do something here
+  usbc_serial.print("CC @ ");
+  usbc_serial.print(channel);
+  usbc_serial.print(", ");
+  usbc_serial.print(value);
+  usbc_serial.print(", ");
+  usbc_serial.print(cc_num);
+  usbc_serial.print(" (chan / val / cc_num)\n");
+}
+void handleProgramChange(uint8_t prog_num, uint8_t channel) {
+  // do something here
+}
+
+// #endif /* ARDUINO_USB_MODE */
