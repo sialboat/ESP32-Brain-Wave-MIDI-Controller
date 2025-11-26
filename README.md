@@ -11,12 +11,12 @@ The main contents of the file is under the file `ADV_COMP_MUSIC_BRAINWAVES.ino`.
 ## MindFlex Brain EEG.
 You can find more information about the MindFlex EEG sensor [here](https://en.wikipedia.org/wiki/Mindflex). They retail for less than $80 on [eBay](https://www.ebay.com/sch/i.html?_nkw=mindflex&_sacat=0&_from=R40&_trksid=p4624852.m570.l1313). 
 
-The incredible folks at NYU's ITP program have provided a comprehensive (tutorial)[https://frontiernerds.com/brain-hack] on how to get this up and running. In addition, they have also provided an (Arduino Library)[https://github.com/kitschpatrol/Brain] to interface with the MindFlex controller. 
+The incredible folks at NYU's ITP program have provided a comprehensive [tutorial](https://frontiernerds.com/brain-hack) on how to get this up and running. In addition, they have also provided an [Arduino Library](https://github.com/kitschpatrol/Brain) to interface with the MindFlex controller. 
 
 Find more about FrontierNerds [here](https://frontiernerds.com).
 
 ## MEAP: The ESP32 Development Board
 [Mason Mann](https://masonmann.online)'s Advanced Computer Music class utilizes a custom-built ESP32 development board and a fork of the Mozzi library to create algorithmic music. Mason's ESP32 Audio Prototyping System (or MEAP) is the development board in question. 
 
-Learn more about it (here)[https://masonmann.online/electronics/meap/]
+Learn more about it [here](https://masonmann.online/electronics/meap/)
 The Mozzi-based Audio Library can also be found [here](https://masonmann.online/electronics/meap/software/)
