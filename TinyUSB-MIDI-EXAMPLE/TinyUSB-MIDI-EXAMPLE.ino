@@ -96,7 +96,8 @@ void loop() {
   if (millis() > next_time) {
     next_time = millis() + 1000;
     uint8_t note_on[3] = { NOTE_ON | 0, 48, 127 };
-    tud_midi_stream_write(0, note_on, 3);
+    uint8_t cc[3] = { CONTROL_CHANGE | 1, (48 + millis()) % 127, 1 };
+    tud_midi_stream_write(0, cc, 3);
   }
 }
 #endif /* ARDUINO_USB_MODE */

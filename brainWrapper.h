@@ -30,12 +30,11 @@ class brainWrapper {
 public:
   brainWrapper(Brain* b, Adafruit_USBD_CDC* s, Adafruit_USBD_MIDI* m)
     : brain(b), adafruit_serial(s),
-      adafruit_midi(m), waves(nullptr) {
+      adafruit_midi(m) {
     brain_waves.reserve(8);  // avoid reallocation
     for (size_t i = 0; i < 8; i++) {
       brain_waves.emplace_back(i);  // construct object whilst passing it into vector, argument goes inside of parenthases
     }
-    waves = (unsigned long*)malloc(20 * sizeof(unsigned long));
   }
 
   bool setDebug(bool val) {
@@ -45,7 +44,10 @@ public:
 
   void update() {
     if (brain->update()) {
-      waves = brain->readPowerArray();
+      unsigned long* tmp = brain->readPowerArray();
+      for(size_t i = 0; i < 8; i++) {
+        waves[i] = tmp[i];
+      }
       attention = brain->readAttention();
       meditation = brain->readMeditation();
       if (debug) {
@@ -62,6 +64,8 @@ public:
     for (size_t i = 0; i < brain_waves.size(); i++) {
       unsigned long new_value = waves[i];
       brain_waves.at(i).update(new_value);
+      // adafruit_serial->println(waves[i]);
+      // adafruit_serial->println(brain_waves.at(i).get_val());
     }
   }
 
@@ -100,22 +104,41 @@ public:
   std::vector<brainWave>* getBrainWaves() {
     return &brain_waves;
   }
+  float getHighAlphaf() {
+    return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_ALPHA)).get_valf();
+  }
 
-  unsigned long getDelta() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::DELTA)).get_val();}
-  unsigned long getTheta() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::THETA)).get_val();}
-  unsigned long getLowAlpha() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::LOW_ALPHA)).get_val();}
-  unsigned long getHighAlpha() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_ALPHA)).get_val();}
-  unsigned long getLowBeta() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::LOW_BETA)).get_val();}
-  unsigned long getHighBeta() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_BETA)).get_val();}
-  unsigned long getLowGamma() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::LOW_GAMMA)).get_val();}
-  unsigned long getHighGamma() {return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_GAMMA)).get_val();}
+  unsigned long getDelta() {
+    return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::DELTA)).get_val();
+  }
+  unsigned long getTheta() {
+    return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::THETA)).get_val();
+  }
+  unsigned long getLowAlpha() {
+    return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::LOW_ALPHA)).get_val();
+  }
+  unsigned long getHighAlpha() {
+    return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_ALPHA)).get_val();
+  }
+  unsigned long getLowBeta() {
+    return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::LOW_BETA)).get_val();
+  }
+  unsigned long getHighBeta() {
+    return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_BETA)).get_val();
+  }
+  unsigned long getLowGamma() {
+    return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::LOW_GAMMA)).get_val();
+  }
+  unsigned long getHighGamma() {
+    return brain_waves.at(static_cast<size_t>(BRAIN_WAVE::FFT_BAND::HIGH_GAMMA)).get_val();
+  }
 
   // the fuckshit that makes this happen
 private:
   Brain* brain;
   Adafruit_USBD_MIDI* adafruit_midi;
   Adafruit_USBD_CDC* adafruit_serial;
-  unsigned long* waves;
+  unsigned long waves[8];
   bool debug = false;
   int pin;
   std::vector<brainWave> brain_waves;

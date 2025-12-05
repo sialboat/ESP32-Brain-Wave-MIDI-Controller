@@ -72,7 +72,8 @@ void loop() {
   digitalWrite(BUILTIN_LED, LOW);
   channel += (1 % (9));
   pitch += (1 % (63));
-  velocity += (1 % (147));
+  velocity += (1 % (128));
+  MIDI.sendControlChange(1, velocity, 1);
   MIDI.read();
   delay(1000);
 }

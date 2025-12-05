@@ -5,44 +5,41 @@
   the interpolation algorithms
 */
 
-
-namespace INTERP {
-enum class INTERPOLATION {
-  LINEAR = 1,
-  LAGRANGE = 2,
-  HERMITE = 3,
-};
-}
+// namespace alphas {
+//   const float delta = 0.9999f;
+//   const float theta = 0.0f;
+//   const float low_alpha = 0.0f;
+//   const float high_alpha = 0.9995f;
+//   const float low_beta = 0.0f;
+//   const float high_beta = 0.0f;
+//   const float low_gamma = 0.0f;
+//   const float high_gamma = 0.0f;
+//   const float alphas[8] = {delta, theta, low_alpha, high_alpha, low_beta, high_beta, low_gamma, high_gamma};
+//   /*(
+//       DELTA = 0,
+//   THETA = 1,
+//   LOW_ALPHA = 2,
+//   HIGH_ALPHA = 3,
+//   LOW_BETA = 4,
+//   HIGH_BETA = 5,
+//   LOW_GAMMA = 6,
+//   HIGH_GAMMA = 7,
+//   )*/
+// };
 
 class brainWave {
 public:
   brainWave(size_t i)
     : fft_index(i) {
-    alpha = 0.99f;
-    interpolation_mode = INTERP::INTERPOLATION::LINEAR;
+    // alpha = alphas::alphas[fft_index];
+    alpha = 0.99995f;
+    // alpha = 0.9995f;
     p0 = 0;
     p1 = 0;
     p2 = 0;
     m0 = 0;
     m1 = 0;
     out_val = 0;
-  }
-
-  void set_interp(int type) {
-    switch (type) {
-      case 1:
-        interpolation_mode = INTERP::INTERPOLATION::LINEAR;
-        break;
-      case 2:
-        interpolation_mode = INTERP::INTERPOLATION::LAGRANGE;
-        break;
-      case 3:
-        interpolation_mode = INTERP::INTERPOLATION::HERMITE;
-        break;
-      default:
-        interpolation_mode = INTERP::INTERPOLATION::HERMITE;
-        break;
-    }
   }
   // updates the value stored in val
   void update(unsigned long new_val) {
@@ -54,126 +51,34 @@ public:
     p0 = new_val;
 
     // approximate tangent
-    m0 = (p1 - p0) / 2;  // approximate tangent of p0
-    m1 = (p2 - p1) / 2;  // approximate tangent of p1
-
-    interp();
+    m0 = ( p0 - p1) * 0.5f;  // approximate tangent of p0
+    m1 = ( p1 - p2) * 0.5f;  // approximate tangent of p1
+    // out = interp();
+    float itrp = interp();
+    out_val = (itrp < 0) ? 0 : (unsigned long) itrp;
   }
 
-  unsigned long interp() {
-    switch (interpolation_mode) {
-      case INTERP::INTERPOLATION::LINEAR:
-        return (unsigned long) lerp();
-        break;
-      case INTERP::INTERPOLATION::LAGRANGE:
-        return (unsigned long) lagrange();
-        break;
-      case INTERP::INTERPOLATION::HERMITE:
-        return (unsigned long) hermite();
-        break;
-      default:
-        return (unsigned long) hermite();
-        break;
-    }
-    // return out_val;
-    // out_val = leaky_integrator();
-    // return out_val;
+  float interp() {
+    out = leaky_integrator();
+    return out;
+  }
+
+  void update_alpha(float tau, float dt=1.0f) {
+    alpha = exp(-dt / tau);
   }
 
   // simple low computation moving average filter / linear interpolation algorithm
   float lerp() {
-    return (alpha * p1) + ((1 - alpha) * p0);
+    return (alpha * moving_average()) + ((1.0f - alpha) * p0);
   }
 
   float leaky_integrator() {
-    l_out = (alp)*l_out + (1.f - alp) * p0;
+    l_out = (alpha)*l_out + (1.f - alpha) * p0;
     return l_out;
   }
 
-  /*
-   Barycentric Lagrange implementation.
-   Lagrange interpolation is the smallest degree polynomial to pass through data points. 
-   We can calculate x-coordinate positions by multiplying a their basis value with the y-value and 
-   summing each of these components. We use the optimized Barycentric form which can apparently be
-   rewritten as
-
-   ( sum ((w_j) / (x - x_j) * p_j)  ) / ( sum( (w_j / (x - x)j) ) )
-
-   where x is the distance from point 1 to point 2
-   x_j is the time value of the jth sample
-   p_j is the value of the jth sample
-   w_j is the jth weight value associated with each sample.
-
-   Since this is done in realtime with the latest 2 samples, we know
-   x0 = 0 (index of the sample we just collected)
-   x1 = -1 (index of the sample before x0)
-   x2 = -2 (index of the sample before x1)
-
-   Similarly, we can compute weights w0, w1, w2 because our sample indices are constant. We use
-   Pi_(j != m) 1 / (x_j - x_m)
-
-   to get
-   w0 = 1 / (0 - 1)(0 - 2) = 1/2 = 0.5f
-   w1 = 1 / (1 - 0)(1 - 2) = -1 = -1.0f
-   w2 = 1 / (2 - 0)(2 - 1) = 1/2 = 0.5f
-
-   All of this precomputation is done so we can achieve a performance of O(k) operations for the kth degree polynomial.
-   Since we use a cubic polynomial, this is incredibly efficient.
-
-   Referred to the "Barycentric Form" section of the Lagrange Polynomial Wikipedia Page
-   https://en.wikipedia.org/wiki/Lagrange_polynomial
-  */
-  float lagrange() {
-    float w0, w1, w2;                      // weight values
-    int8_t x0, x1, x2;                     // sample indices
-    float x = alpha;                       // distance from point 1 to point 2, adjust it via the alpha variable
-    float c0, c1, c2, num, denom;  // values
-
-    // sample indices with respect to p2 (current sample), p1 (one sample ago), p0 (two samples ago)
-    x0 = 0;
-    x1 = -1;
-    x2 = -2;
-
-    // weights w_j
-    w0 = 0.5f;
-    w1 = -1.0f;
-    w2 = 0.5f;
-
-    // compute c1 & c2
-    c0 = w0 / (x - x0);
-    c1 = w1 / (x - x1);
-    c2 = w2 / (x - x2);
-
-    // compute the numerator and denominator
-    num = (c0 * p0) + (c1 * p1) + (c2 * p2);
-    denom = c0 + c1 + c2;
-
-    return num / denom;
-  }
-
-  /*
-    Hermite implementation (Cubic Hermite Spline), a generalization of lagrange interpolation
-    It generalizes Lagrange by including the derivatives of p0, p1, and p2 alongside the values p0, p1, p2.
-    As a result, it makes for a really good real-time interpolation for real-time computation.
-    Found initially in a section of TAP's "Beginner Audio Plugin book" or whatever it was called.
-    We implement the P(t) interpolation equation across a single unit interval [0, 1] in real time by replacing t for alpha
-
-    P(t) = (2t^3 - 3t^2 + 1)p_0 + (t^3 - 2t^2 + t)m_0 + (-2t^3 + 3t^2)p_1 + (t^3 - t^2)m_1
-
-    Referred to the "Interpolation on a single Unit Interval [0, 1]" section for this implementation on Wikipedia.
-    https://en.wikipedia.org/wiki/Cubic_Hermite_spline#Representations
-  */
-  float hermite() {
-    // precompute square and cubic values
-    float a2 = alpha * alpha;
-    float a3 = alpha * alpha * alpha;
-
-    //calculate each subcomponent
-    float c1 = ((2 * a3) - (3 * a2) + 1) * p0;
-    float c2 = (a3 - (2 * a2) + alpha) * m0;
-    float c3 = ((-2 * a3) + (3 * a2)) * p1;
-    float c4 = (a3 + a2) * m1;
-    return c1 + c2 + c3 + c4;
+  float moving_average() { 
+    return (p0 + p1 + p2) / 3.0f;
   }
 
   // fuckshit getters and setters
@@ -193,6 +98,9 @@ public:
   unsigned long get_val() {
     return out_val;
   }
+  float get_valf() {
+    return out;
+  }
   void set_alpha(float new_alpha = default_alpha) {
     alpha = new_alpha;
   }
@@ -202,17 +110,17 @@ public:
 
 private:
   size_t fft_index;  // index of the FFT array upon calling "brain->readPowerArray()"
-  INTERP::INTERPOLATION interpolation_mode;
   float alpha;  // akin to weight value
   static constexpr float default_alpha = 0.5f;
-  float out_val;
+  unsigned long out_val;
+  float out = 0.0f;
   float p0;  // current sample
-  unsigned long p1;  // previous sample
-  unsigned long p2;  // previous previous sample
-  unsigned long m0;  // slope of current sample p0
-  unsigned long m1;  // slope of previous sample p1
+  float p1;  // previous sample
+  float p2;  // previous previous sample
+  float m0;  // slope of current sample p0
+  float m1;  // slope of previous sample p1
 
-  unsigned long l_out;
-  unsigned long l_in;
-  float alp = 0.99;
+  float l_out;
+  float l_in;
+  float alp = 0.999;
 };

@@ -31,6 +31,14 @@ void loop() {
   if(brain.update()) {
     usbc_serial.println("Loop running!");
     usbc_serial.println(brain.readCSV());
+    // usbc_serial.println(brain.readDelta());
+    // usbc_serial.println(brain.readTheta());
+    // usbc_serial.println(brain.readLowAlpha());
+    // usbc_serial.println(brain.readHighAlpha());
+    // usbc_serial.println(brain.readLowBeta());
+    // usbc_serial.println(brain.readHighBeta());
+    // usbc_serial.println(brain.readLowGamma());
+    // usbc_serial.println(brain.readMidGamma());
     usbc_serial.println(brain.readErrors());
   }
   // Use brainSerial/brain object for comms with the Brain
