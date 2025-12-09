@@ -1,0 +1,12 @@
+Silas Wang MPATE-GE 2047 Adv. Computer Music
+Final Project Submission
+
+My Final Project was a Brain-Wave MIDI controller. I utilized a MindFlex
+Brain Wave scanner and converted it to MIDI-CC. These MIDI-CC messages
+were then sent via the Adafruit TinyUSB to a plugin host (VCV Rack) that
+generated weird sounds given an audio input.
+
+You can find a detailed report, source code, and broken c++ header files
+at the following repository:
+
+https://github.com/sialboat/ESP32-Brain-Wave-MIDI-Controller
